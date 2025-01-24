@@ -1,0 +1,10 @@
+langchain
+langchain_community
+langchain-milvus
+pymilvus==2.4.6
+fastapi
+jinja2
+uvicorn
+websockets
+openai
+humanloop

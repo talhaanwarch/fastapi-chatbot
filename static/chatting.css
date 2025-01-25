@@ -1,3 +1,4 @@
+
 :root {
     --primary-color: #10a37f;
     --primary-hover: #0d8a6a;
@@ -7,7 +8,7 @@
 
 body {
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: #f8f9fa;
+    background: #ffffff;
     height: 100vh;
     margin: 0;
     display: flex;
@@ -84,7 +85,6 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Fixed spacing in assistant messages */
 .assistant-message > * {
     margin: 0 !important;
     padding: 0 !important;

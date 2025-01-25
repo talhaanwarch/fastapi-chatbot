@@ -22,14 +22,19 @@ from humanloop import Humanloop
 import time
 logging.basicConfig(level=logging.INFO)
 
-# logging.basicConfig(filename='/app/logs/websocket_chat.log',  level=logging.INFO, 
-#                     format='%(asctime)s - %(levelname)s - %(message)s')
-
-
 load_dotenv()
 templates = Jinja2Templates(directory="../templates")
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="../static"), name="static")
+# app.mount("/static", StaticFiles(directory="../static"), name="static")
+static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../static'))
+logging.info(f"static_dir {static_dir}")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# just checking static files
+from pathlib import Path
+static_path = Path(__file__).parent.parent / "static"
+logging.info(f"Static path exists: {static_path.exists()}")  # Should be True
+logging.info(f"CSS file exists: {(static_path/'chatting.css').exists()}")  # Should be True
 
 
 client = Humanloop(

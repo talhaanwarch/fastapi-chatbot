@@ -1,6 +1,6 @@
 from typing import Annotated
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import os
+import os, requests
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -41,3 +41,26 @@ def call_refiner_prompt(client, messages,question):
         
     )
     return response.logs[0].output
+
+def jina_rerank( query, docs, top_n=5):
+
+    url = "https://api.jina.ai/v1/rerank"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.getenv('JINA_KEY')}",
+    }
+    data = {
+        "model": "jina-reranker-v2-base-multilingual",
+        "query": query,
+        "top_n": top_n,
+        "documents": docs,
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+    response = response.json()["results"]
+    print("Length of docs 1",len(docs))
+    index = [i["index"] for i in response]
+    print('index',index)
+    docs = [docs[i] for i in index]
+    print("Length of docs 2",len(docs))
+    return docs

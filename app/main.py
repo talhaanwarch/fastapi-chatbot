@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 from langchain_community.embeddings import JinaEmbeddings
 from langchain_milvus import Milvus
-from utils import call_stream,message_to_str,call_refiner_prompt
+from utils import call_stream,message_to_str,call_refiner_prompt,jina_rerank
 from dotenv import load_dotenv
 import os
 import logging
@@ -44,26 +44,6 @@ embeddings = JinaEmbeddings(
     jina_api_key=os.getenv("JINA_KEY"), model_name="jina-embeddings-v3"
 )
 
-def create_db_from_file(uploaded_file):
-    docs = load_split_file(f"{uploaded_file.filename}")
-    vector_store_saved = Milvus.from_documents(
-        docs,
-        embeddings,
-        collection_name="langchain_example",
-        connection_args={
-            "uri": os.getenv("MILVUS_URI"),
-            "token": os.getenv("MILVUS_TOKEN"),
-            "secure": True,
-        },
-    )
-    print("Vector store saved")
-
-
-@app.get("/", response_class=HTMLResponse)
-def return_homepage(request: Request):
-    return templates.TemplateResponse(request=request, name="chatting.html")
-
-
 vector_store_loaded = Milvus(
     embeddings,
     connection_args={
@@ -73,6 +53,11 @@ vector_store_loaded = Milvus(
     },
     collection_name="UNCITRAL",
 )
+
+@app.get("/", response_class=HTMLResponse)
+def return_homepage(request: Request):
+    return templates.TemplateResponse(request=request, name="chatting.html")
+
 
 """
 Step1: extract year
@@ -111,10 +96,18 @@ async def websocket_chat(websocket: WebSocket):
 
             # Perform similarity search
             start_time = time.time()
-            results = vector_store_loaded.similarity_search(query, k=5)
-            page_content = "\n".join([i.page_content for i in results])
+            results = vector_store_loaded.similarity_search(query, k=10)
+            result_content =[i.page_content for i in results]
             end_time = time.time()
             logging.info(f"Time taken to perform similarity search: {end_time - start_time:.4f} seconds")
+
+            # Rerank
+            start_time = time.time()
+            result_content = jina_rerank(query,result_content)
+            page_content = "\n--------------------------------------------------\n".join(result_content)
+            end_time = time.time()
+            logging.info(f"Time taken to rerank: {end_time - start_time:.4f} seconds")
+            
 
             # Call stream and send response
             response_text = ''

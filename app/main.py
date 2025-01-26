@@ -51,7 +51,7 @@ vector_store_loaded = Milvus(
         "token": os.getenv("MILVUS_TOKEN"),
         "secure": True,
     },
-    collection_name="UNCITRAL",
+    collection_name="BANURI",
 )
 
 @app.get("/", response_class=HTMLResponse)
@@ -85,14 +85,17 @@ async def websocket_chat(websocket: WebSocket):
                     messages.append({"role": "user", "content": entry["user"]})
                 elif "assistant" in entry:
                     messages.append({"role": "assistant", "content": entry["assistant"]})
-
+            logging.info(f"=====messages====={len(messages)}")
             # Refine the query
             start_time = time.time()
             total_start = time.time()
-            messages_str = message_to_str(messages)
-            query = call_refiner_prompt(client, messages_str, user_input)
-            end_time = time.time()
-            logging.info(f"Time taken to refine query: {end_time - start_time:.4f} seconds")
+            if len(messages)>1:
+                messages_str = message_to_str(messages)
+                query = call_refiner_prompt(client, messages_str, user_input)
+                end_time = time.time()
+                logging.info(f"Time taken to refine query: {end_time - start_time:.4f} seconds")
+            else:
+                query = user_input
 
             # Perform similarity search
             start_time = time.time()

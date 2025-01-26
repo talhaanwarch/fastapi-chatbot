@@ -8,7 +8,8 @@ load_dotenv()
 def call_stream(client, messages,context):
     response = client.prompts.call_stream(
         environment="production",
-        id="pr_XE7txDMTqX6DR8Fk40kWd",
+        id="pr_zPxbzZ6eDSnN97v2uMQsj",
+        #"pr_XE7txDMTqX6DR8Fk40kWd",
         messages=messages,
         inputs={"chunks": context},
         source="test",
@@ -32,7 +33,8 @@ def message_to_str(messages):
 def call_refiner_prompt(client, messages,question):
     response = client.prompts.call(
         environment="production",
-        id="pr_VR2yMxzTxLxjy1zGpo6Sb",
+        id="pr_0OIl9UUwDEMHXctJ93OyC",
+        #"pr_VR2yMxzTxLxjy1zGpo6Sb",
         inputs={"conversation": messages,"question":question},
         source="test",
         save=True,
@@ -58,9 +60,6 @@ def jina_rerank( query, docs, top_n=5):
 
     response = requests.post(url, headers=headers, json=data)
     response = response.json()["results"]
-    print("Length of docs 1",len(docs))
     index = [i["index"] for i in response]
-    print('index',index)
     docs = [docs[i] for i in index]
-    print("Length of docs 2",len(docs))
     return docs

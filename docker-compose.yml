@@ -4,11 +4,10 @@ services:
   rag-app:
     container_name: rag_demo
     build: .
-    # ports:
-    #  - "8001:8001"
+    #ports:
+    #  - "8001:8001"  # Expose port 8001 on the host
     volumes:
-      - .:/code # this will basically sync my local directory with docker directory, any change i made locally will be reflected there
-    command: uvicorn main:app --host 0.0.0.0 --port 8001
+      - .:/code  # Sync local directory with the container directory
     networks:
       - mynetwork
 

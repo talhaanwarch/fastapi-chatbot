@@ -8,3 +8,4 @@ uvicorn
 websockets
 openai
 humanloop
+gunicorn

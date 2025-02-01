@@ -14,36 +14,63 @@ from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 from langchain_community.embeddings import JinaEmbeddings
 from langchain_milvus import Milvus
-from utils import call_stream,message_to_str,call_refiner_prompt,jina_rerank
+from .utils import call_stream,message_to_str,call_refiner_prompt,jina_rerank
 from dotenv import load_dotenv
 import os
 import logging
 from humanloop import Humanloop
 import time
+
 logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
-templates = Jinja2Templates(directory="../templates")
+templates_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../templates'))
+logging.info(f"templates_dir {templates_dir}")
+templates = Jinja2Templates(directory=templates_dir)
+
 app = FastAPI()
-# app.mount("/static", StaticFiles(directory="../static"), name="static")
+# app.mount"/static", StaticFiles(directory="../static"), name="static")
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../static'))
 logging.info(f"static_dir {static_dir}")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-# just checking static files
-from pathlib import Path
-static_path = Path(__file__).parent.parent / "static"
-logging.info(f"Static path exists: {static_path.exists()}")  # Should be True
-logging.info(f"CSS file exists: {(static_path/'chatting.css').exists()}")  # Should be True
+
+from fastapi import Request, HTTPException
+from fastapi.responses import PlainTextResponse
+
+BLOCKED_PATTERNS = [
+    "wp-", "wordpress", "setup-config", ".git", 
+    ".env", "xmlrpc", "wlwmanifest", "phpmyadmin",
+    "aws", "admin", "config", "backup", "sql"
+]
+
+@app.middleware("http")
+async def security_filter(request: Request, call_next):
+    path = request.url.path.lower()
+    
+    # Block by pattern match
+    if any(bp in path for bp in BLOCKED_PATTERNS):
+        return PlainTextResponse("Blocked", status_code=403)
+    
+    # Block suspicious methods
+    if request.method not in {"GET", "POST"}:
+        return PlainTextResponse("Method Not Allowed", status_code=405)
+    
+    # Block common exploit headers
+    if "sql" in request.headers.get("user-agent", "").lower():
+        return PlainTextResponse("Blocked", status_code=403)
+    
+    return await call_next(request)
+
 
 
 client = Humanloop(
-    api_key=os.getenv("HUMANLOOP_KEY"),
+api_key=os.getenv("HUMANLOOP_KEY"),
 )
 embeddings = JinaEmbeddings(
     jina_api_key=os.getenv("JINA_KEY"), model_name="jina-embeddings-v3"
 )
-
+logging.info("Reading milvus client start")
 vector_store_loaded = Milvus(
     embeddings,
     connection_args={
@@ -53,12 +80,13 @@ vector_store_loaded = Milvus(
     },
     collection_name="BANURI",
 )
+logging.info("Reading milvus client end")
 
 @app.get("/", response_class=HTMLResponse)
 def return_homepage(request: Request):
     return templates.TemplateResponse(request=request, name="chatting.html")
 
-
+    
 """
 Step1: extract year
 Step2: Rewrite Query

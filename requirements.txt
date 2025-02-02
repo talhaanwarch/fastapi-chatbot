@@ -6,6 +6,3 @@ fastapi
 jinja2
 uvicorn
 websockets
-openai
-humanloop
-gunicorn

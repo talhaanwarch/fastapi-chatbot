@@ -62,11 +62,6 @@ async def security_filter(request: Request, call_next):
     
     return await call_next(request)
 
-
-
-client = Humanloop(
-api_key=os.getenv("HUMANLOOP_KEY"),
-)
 embeddings = JinaEmbeddings(
     jina_api_key=os.getenv("JINA_KEY"), model_name="jina-embeddings-v3"
 )
@@ -119,7 +114,7 @@ async def websocket_chat(websocket: WebSocket):
             total_start = time.time()
             if len(messages)>1:
                 messages_str = message_to_str(messages)
-                query = call_refiner_prompt(client, messages_str, user_input)
+                query = call_refiner_prompt( messages_str, user_input)
                 end_time = time.time()
                 logging.info(f"Time taken to refine query: {end_time - start_time:.4f} seconds")
             else:
@@ -143,7 +138,7 @@ async def websocket_chat(websocket: WebSocket):
             # Call stream and send response
             response_text = ''
             start_time = time.time()
-            for chunk in call_stream(client, messages, page_content):
+            for chunk in call_stream(messages, page_content):
                 await websocket.send_text(chunk)
                 response_text += chunk
             # Send a stop word to indicate the end of the message

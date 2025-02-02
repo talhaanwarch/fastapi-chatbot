@@ -1,48 +1,69 @@
 from typing import Annotated
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import os, requests
+import os, requests, json
 from dotenv import load_dotenv
 load_dotenv()
+import logging
+import time
 
+logging.basicConfig(level=logging.INFO)
 
-def call_stream(client, messages,context):
-    response = client.prompts.call_stream(
-        environment="production",
-        id="pr_zPxbzZ6eDSnN97v2uMQsj",
-        #"pr_XE7txDMTqX6DR8Fk40kWd",
-        messages=messages,
-        inputs={"chunks": context},
-        source="test",
-        save=True,
-        num_samples=1,
-        return_inputs=False,
+def call_stream(messages, context):
+    url = "https://api.humanloop.com/v5/prompts/call"
+    headers = {
+        "X-API-KEY": os.getenv("HUMANLOOP_KEY"),
+        "Content-Type": "application/json"
+    }
+    data = {
+        "environment": "production",
+        "id": "pr_zPxbzZ6eDSnN97v2uMQsj",
+        "messages": messages,
+        "inputs": {"chunks": context},
+        "source": "test",
+        "save": True,
+        "num_samples": 1,
+        "return_inputs": False,
+        "stream": True
+    }
+    
+    response = requests.post(url, headers=headers, json=data, stream=True)
+    
+    if response.status_code != 200:
+        raise Exception(f"API call failed with status code {response.status_code}: {response.text}")
         
-    )
-    for chunk in response:
-        yield chunk.output_message.content
+    for line in response.iter_lines():
+        if line:
+            # Remove the 'data: ' prefix and decode the line
+            json_str = line.decode('utf-8').replace('data: ', '')
+            # Parse the JSON string
+            data = json.loads(json_str)
+            res = data['output']
+            yield res
 
 
-def message_to_str(messages):
-    messages_str = ""
-    for message in messages:
-        role = message["role"]
-        content = message["content"]
-        messages_str += f"{role}: {content}\n"
-    return messages_str
-
-def call_refiner_prompt(client, messages,question):
-    response = client.prompts.call(
-        environment="production",
-        id="pr_0OIl9UUwDEMHXctJ93OyC",
-        #"pr_VR2yMxzTxLxjy1zGpo6Sb",
-        inputs={"conversation": messages,"question":question},
-        source="test",
-        save=True,
-        num_samples=1,
-        return_inputs=False,
-        
-    )
-    return response.logs[0].output
+def call_refiner_prompt(messages, question):
+    url = "https://api.humanloop.com/v5/prompts/call"
+    headers = {
+        "X-API-KEY": os.getenv("HUMANLOOP_KEY"),
+        "Content-Type": "application/json"
+    }
+    data = {
+        "environment": "production",
+        "id": "pr_0OIl9UUwDEMHXctJ93OyC",
+        "inputs": {"conversation": messages, "question": question},
+        "source": "test",
+        "save": True,
+        "num_samples": 1,
+        "return_inputs": False,
+        "stream": False
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code != 200:
+        raise Exception(f"API call failed with status code {response.status_code}: {response.text}")
+    
+    return response.json()["logs"][0]["output"]
 
 def jina_rerank( query, docs, top_n=5):
 
@@ -63,3 +84,11 @@ def jina_rerank( query, docs, top_n=5):
     index = [i["index"] for i in response]
     docs = [docs[i] for i in index]
     return docs
+
+def message_to_str(messages):
+    messages_str = ""
+    for message in messages:
+        role = message["role"]
+        content = message["content"]
+        messages_str += f"{role}: {content}\n"
+    return messages_str

@@ -1,5 +1,8 @@
-// const ws = new WebSocket("ws://127.0.0.1:8003/");
-const ws = new WebSocket("wss:rag.talhaanwar.com");
+// Construct WebSocket URL dynamically based on current location
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${wsProtocol}//${window.location.host}`;
+const ws = new WebSocket(wsUrl);
+console.log(wsUrl)
 
 let responseBuffer = '';
 let currentMessage = null;

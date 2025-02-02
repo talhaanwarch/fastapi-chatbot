@@ -18,7 +18,6 @@ from .utils import call_stream,message_to_str,call_refiner_prompt,jina_rerank
 from dotenv import load_dotenv
 import os
 import logging
-from humanloop import Humanloop
 import time
 
 logging.basicConfig(level=logging.INFO)

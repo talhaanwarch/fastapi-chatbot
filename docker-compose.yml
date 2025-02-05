@@ -1,8 +1,7 @@
-version: '3.8'
-
 services:
   rag-app:
     container_name: rag_demo
+    restart: unless-stopped
     build: .
     #ports:
     #  - "8001:8001"  # Expose port 8001 on the host

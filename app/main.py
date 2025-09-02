@@ -1,20 +1,16 @@
 from fastapi import (
     FastAPI,
-    File,
-    UploadFile,
     Request,
     WebSocket,
-    status,
     WebSocketDisconnect,
-    BackgroundTasks,
 )
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from openai import OpenAI
-from langchain_community.embeddings import JinaEmbeddings
-from langchain_milvus import Milvus
-from .utils import call_stream,message_to_str,call_refiner_prompt,jina_rerank
+from qdrant_client import QdrantClient
+from langchain_openai import OpenAIEmbeddings
+from langchain_qdrant import QdrantVectorStore
+from .utils import call_stream,message_to_str,call_refiner_prompt,cohere_rerank
 from dotenv import load_dotenv
 import os
 import logging
@@ -28,53 +24,26 @@ logging.info(f"templates_dir {templates_dir}")
 templates = Jinja2Templates(directory=templates_dir)
 
 app = FastAPI()
-# app.mount"/static", StaticFiles(directory="../static"), name="static")
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../static'))
 logging.info(f"static_dir {static_dir}")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-
-from fastapi import Request, HTTPException
-from fastapi.responses import PlainTextResponse
-
-BLOCKED_PATTERNS = [
-    "wp-", "wordpress", "setup-config", ".git", 
-    ".env", "xmlrpc", "wlwmanifest", "phpmyadmin",
-    "aws", "admin", "config", "backup", "sql"
-]
-
-@app.middleware("http")
-async def security_filter(request: Request, call_next):
-    path = request.url.path.lower()
-    
-    # Block by pattern match
-    if any(bp in path for bp in BLOCKED_PATTERNS):
-        return PlainTextResponse("Blocked", status_code=403)
-    
-    # Block suspicious methods
-    if request.method not in {"GET", "POST"}:
-        return PlainTextResponse("Method Not Allowed", status_code=405)
-    
-    # Block common exploit headers
-    if "sql" in request.headers.get("user-agent", "").lower():
-        return PlainTextResponse("Blocked", status_code=403)
-    
-    return await call_next(request)
-
-embeddings = JinaEmbeddings(
-    jina_api_key=os.getenv("JINA_KEY"), model_name="jina-embeddings-v3"
+qdrant_client = QdrantClient(
+    url=os.getenv("QDRANT_URL"),
+    api_key=os.getenv("QDRANT_API_KEY"),
 )
-logging.info("Reading milvus client start")
-vector_store_loaded = Milvus(
-    embeddings,
-    connection_args={
-        "uri": os.getenv("MILVUS_URI"),
-        "token": os.getenv("MILVUS_TOKEN"),
-        "secure": True,
-    },
-    collection_name="BANURI",
+
+embeddings = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    api_key=os.getenv("OPENAI_API_KEY"),
 )
-logging.info("Reading milvus client end")
+logging.info("Reading qdrant client start")
+vector_store_loaded = QdrantVectorStore(
+    client=qdrant_client,
+    collection_name="uncitral",
+    embedding=embeddings,
+)
+logging.info("Reading qdrant client end")
 
 @app.get("/", response_class=HTMLResponse)
 def return_homepage(request: Request):
@@ -128,7 +97,7 @@ async def websocket_chat(websocket: WebSocket):
 
             # Rerank
             start_time = time.time()
-            result_content = jina_rerank(query,result_content)
+            result_content = cohere_rerank(query,result_content)
             page_content = "\n--------------------------------------------------\n".join(result_content)
             end_time = time.time()
             logging.info(f"Time taken to rerank: {end_time - start_time:.4f} seconds")

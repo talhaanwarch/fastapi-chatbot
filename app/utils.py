@@ -2,88 +2,94 @@ from typing import Annotated
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import os, requests, json
 from dotenv import load_dotenv
+from openai import OpenAI
 load_dotenv()
 import logging
-import time
+import cohere
+from langfuse import Langfuse
 
 logging.basicConfig(level=logging.INFO)
 
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_KEY"),
+)
+langfuse = Langfuse(
+  secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+  public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+  host="https://us.cloud.langfuse.com"
+)
+REFINER_SYSTEM_PROMPT = langfuse.get_prompt("refiner_prompt")
+print("REFINER_SYSTEM_PROMPT",REFINER_SYSTEM_PROMPT)
+
+QA_SYSTEM_PROMPT = prompt = langfuse.get_prompt("qa_prompt")
+
+print("QA_SYSTEM_PROMPT",QA_SYSTEM_PROMPT)
+
+
+
 def call_stream(messages, context):
-    url = "https://api.humanloop.com/v5/prompts/call"
-    headers = {
-        "X-API-KEY": os.getenv("HUMANLOOP_KEY"),
-        "Content-Type": "application/json"
-    }
-    data = {
-        "environment": "production",
-        "id": "pr_zPxbzZ6eDSnN97v2uMQsj",
-        "messages": messages,
-        "inputs": {"chunks": context},
-        "source": "test",
-        "save": True,
-        "num_samples": 1,
-        "return_inputs": False,
-        "stream": True
-    }
+    user_question = messages[-1]['content'] if messages else ""
     
-    response = requests.post(url, headers=headers, json=data, stream=True)
+    prompt = QA_SYSTEM_PROMPT.compile(chunks=context, question=user_question)
     
-    if response.status_code != 200:
-        raise Exception(f"API call failed with status code {response.status_code}: {response.text}")
+    conversation_messages = [
+        {"role": "system", "content": prompt}
+    ]
+    
+    conversation_messages.extend(messages)
+    
+    try:
+        stream = client.chat.completions.create(
+            model="google/gemini-2.0-flash-001",
+            messages=conversation_messages,
+            stream=True,
+            temperature=0.1,
+            max_tokens=2000
+        )
         
-    for line in response.iter_lines():
-        if line:
-            # Remove the 'data: ' prefix and decode the line
-            json_str = line.decode('utf-8').replace('data: ', '')
-            # Parse the JSON string
-            data = json.loads(json_str)
-            res = data['output']
-            yield res
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                yield chunk.choices[0].delta.content
+                
+    except Exception as e:
+        logging.error(f"OpenAI API call failed: {e}")
+        yield f"Error: Unable to process your request. Please try again."
 
 
 def call_refiner_prompt(messages, question):
-    url = "https://api.humanloop.com/v5/prompts/call"
-    headers = {
-        "X-API-KEY": os.getenv("HUMANLOOP_KEY"),
-        "Content-Type": "application/json"
-    }
-    data = {
-        "environment": "production",
-        "id": "pr_0OIl9UUwDEMHXctJ93OyC",
-        "inputs": {"conversation": messages, "question": question},
-        "source": "test",
-        "save": True,
-        "num_samples": 1,
-        "return_inputs": False,
-        "stream": False
-    }
+    prompt = REFINER_SYSTEM_PROMPT.compile(conversation=messages, question=question)
     
-    response = requests.post(url, headers=headers, json=data)
-    
-    if response.status_code != 200:
-        raise Exception(f"API call failed with status code {response.status_code}: {response.text}")
-    
-    return response.json()["logs"][0]["output"]
+    try:
+        response = client.chat.completions.create(
+            model="google/gemini-2.0-flash-001",
+            messages=[
+                {"role": "system", "content": prompt}
+            ],
+            temperature=0.1,
+            max_tokens=200
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        logging.error(f"Query refinement failed: {e}")
+        return question
 
-def jina_rerank( query, docs, top_n=5):
+def cohere_rerank(query, docs, top_n=6):
+    cohere_client = cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY"))
+    results = cohere_client.rerank(
+        model="rerank-v3.5",
+        query=query,
+        documents=docs,
+        top_n=top_n,
+    )
 
-    url = "https://api.jina.ai/v1/rerank"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {os.getenv('JINA_KEY')}",
-    }
-    data = {
-        "model": "jina-reranker-v2-base-multilingual",
-        "query": query,
-        "top_n": top_n,
-        "documents": docs,
-    }
+    indexes = [i.index for i in results.results]
+    texts = [docs[i] for i in indexes]
+    relevance_scores = [i.relevance_score for i in results.results]
 
-    response = requests.post(url, headers=headers, json=data)
-    response = response.json()["results"]
-    index = [i["index"] for i in response]
-    docs = [docs[i] for i in index]
-    return docs
+    return texts
 
 def message_to_str(messages):
     messages_str = ""

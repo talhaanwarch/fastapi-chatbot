@@ -1,9 +1,13 @@
 
 :root {
-    --primary-color: #10a37f;
-    --primary-hover: #0d8a6a;
-    --user-bubble: #10a37f;
-    --assistant-bubble: #f1f1f1;
+    --primary-color: #003366;
+    --primary-hover: #002244;
+    --user-bubble: #003366;
+    --assistant-bubble: #f8f9fa;
+    --accent-color: #0066cc;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --border-color: #dee2e6;
 }
 
 body {
@@ -18,8 +22,28 @@ body {
 .chat-header {
     text-align: center;
     padding: 2rem 0;
-    background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+    color: white;
+    box-shadow: 0 2px 12px rgba(0,51,102,0.15);
+}
+
+.chat-header h1 {
+    color: white;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.chat-header .text-muted {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.chat-header a {
+    color: rgba(255, 255, 255, 0.95) !important;
+    text-decoration: underline;
+}
+
+.chat-header a:hover {
+    color: white !important;
 }
 
 .chat-container {
@@ -62,21 +86,24 @@ body {
 
 .assistant-message {
     background: var(--assistant-bubble);
+    border: 1px solid var(--border-color);
     border-radius: 1.5rem 1.5rem 1.5rem 0;
     margin-right: auto;
+    color: var(--text-primary);
 }
 
 .input-container {
     padding: 1rem;
     background: white;
-    box-shadow: 0 -2px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 -2px 12px rgba(0,51,102,0.1);
+    border-top: 1px solid var(--border-color);
 }
 
 .typing-indicator {
     display: none;
     padding: 1rem;
     font-style: italic;
-    color: #666;
+    color: var(--text-secondary);
     text-align: center;
 }
 

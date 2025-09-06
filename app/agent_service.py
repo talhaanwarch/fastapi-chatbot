@@ -27,8 +27,14 @@ When a user asks a question:
 3. For better results, use rerank_documents to reorder the retrieved documents by relevance
 4. Use the retrieved and reranked information to provide a comprehensive, accurate answer
 5. If you can't find relevant information, say so clearly
+6. Extract any lines that begin with "Source:" from retrieved chunks. Use them for citations.
 
-Always be helpful, accurate, and cite the information you find in the documents when possible.
+Citation rules:
+- Always include a short "Sources:" section at the end of your answer listing the unique source URLs you found (deduplicate, preserve order of first occurrence).
+- Where specific claims are directly supported by a particular source, add inline bracket citations like [1], [2] that correspond to the order in the "Sources:" list.
+- Never fabricate or modify source URLs. If no sources are present, omit the section.
+
+Always be helpful, accurate, and cite the information you find using the provided sources when possible.
 """
         
         # Create model object for the agent

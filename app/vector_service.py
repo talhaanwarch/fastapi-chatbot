@@ -47,7 +47,7 @@ class VectorService:
             k: Number of documents to retrieve (defaults to config value)
             
         Returns:
-            List[str]: List of retrieved document contents
+            List[str]: List of retrieved document contents, each optionally ending with 'Source: <url>'
         """
         if k is None:
             k = config.SIMILARITY_SEARCH_K
@@ -56,7 +56,19 @@ class VectorService:
             start_time = time.time()
             logger.info(f"service=vector_store op=similarity_search status=start k={k} query_preview='{query[:100]}'")
             results = self.vector_store.similarity_search(query, k=k)
-            documents = [doc.page_content for doc in results]
+            # Append source URL from metadata (prefer 'pdf_url', fallback to 'source' or 'url')
+            documents = []
+            for doc in results:
+                metadata = getattr(doc, "metadata", {}) or {}
+                source_url = (
+                    metadata.get("pdf_url")
+                    or metadata.get("source")
+                    or metadata.get("url")
+                )
+                if source_url:
+                    documents.append(f"{doc.page_content}\n\nSource: {source_url}")
+                else:
+                    documents.append(doc.page_content)
             elapsed = time.time() - start_time
             logger.info(f"service=vector_store op=similarity_search status=success docs={len(documents)} elapsed_sec={elapsed:.4f}")
             return documents
@@ -103,4 +115,3 @@ class VectorService:
             logger.exception(f"service=vector_store op=rerank status=error message='{str(e)}'")
             return documents[:top_n]  # Fallback to original order
     
-    # Removed unused helper method search_and_rerank

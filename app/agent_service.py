@@ -33,7 +33,7 @@ Always be helpful, accurate, and cite the information you find in the documents 
         
         # Create model object for the agent
         chat_model = config.get_chat_model()
-        
+
         self.agent = Agent(
             name="RAG Assistant",
             instructions=instructions,
@@ -67,13 +67,14 @@ Always be helpful, accurate, and cite the information you find in the documents 
         chat_history.append({"user": user_input})
         
         # Convert history to conversation context string for the agent
-        conversation_context = self._format_conversation_context(chat_history[:-1])  # Exclude current message
-        
+        conversation_context = self._format_conversation_context(chat_history[:-1])
+
         # Create input message with context
-        if conversation_context:
-            agent_input = f"Conversation context:\n{conversation_context}\n\nCurrent question: {user_input}"
-        else:
-            agent_input = user_input
+        agent_input = (
+            f"Conversation context:\n{conversation_context}\n\nCurrent question: {user_input}"
+            if conversation_context
+            else user_input
+        )
         
         # Stream response using the agent
         start_time = time.time()

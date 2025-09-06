@@ -1,7 +1,7 @@
 """Agent tools for RAG operations using OpenAI Agents framework."""
 
 import logging
-from typing import List, Optional
+from typing import Optional
 from agents import function_tool
 
 logger = logging.getLogger(__name__)

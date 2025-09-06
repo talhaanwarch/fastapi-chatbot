@@ -25,11 +25,6 @@ class Config:
     # Cohere Configuration
     COHERE_API_KEY: Optional[str] = os.getenv("COHERE_API_KEY")
     
-    # Langfuse Configuration (temporarily disabled for Agent refactor)
-    # LANGFUSE_SECRET_KEY: Optional[str] = os.getenv("LANGFUSE_SECRET_KEY")
-    # LANGFUSE_PUBLIC_KEY: Optional[str] = os.getenv("LANGFUSE_PUBLIC_KEY")
-    # LANGFUSE_HOST: str = "https://us.cloud.langfuse.com"
-    
     # Model Configuration
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     CHAT_MODEL: str = "google/gemini-2.0-flash-001"

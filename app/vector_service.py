@@ -97,22 +97,7 @@ class VectorService:
             return documents[:top_n]  # Fallback to original order
     
     def search_and_rerank(self, query: str, k: int = None, top_n: int = None) -> str:
-        """
-        Perform similarity search followed by reranking.
-        
-        Args:
-            query: Search query
-            k: Number of documents to initially retrieve
-            top_n: Number of top documents to return after reranking
-            
-        Returns:
-            str: Joined content of reranked documents
-        """
-        # Get initial documents
+        """Perform similarity search followed by reranking and return joined text."""
         documents = self.similarity_search(query, k)
-        
-        # Rerank documents
         reranked_docs = self.rerank_documents(query, documents, top_n)
-        
-        # Join documents with separator
         return "\n--------------------------------------------------\n".join(reranked_docs)

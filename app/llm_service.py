@@ -1,9 +1,7 @@
 """Language model service for handling LLM interactions."""
 
 import logging
-from typing import Generator, Optional
 from openai import OpenAI
-# from langfuse import Langfuse  # Temporarily disabled for Agent refactor
 from .config import config
 
 logger = logging.getLogger(__name__)
@@ -19,14 +17,7 @@ class LLMService:
             api_key=config.OPENROUTER_KEY,
         )
         
-        # Temporarily disabled Langfuse for Agent refactor
-        # self.langfuse = Langfuse(
-        #     secret_key=config.LANGFUSE_SECRET_KEY,
-        #     public_key=config.LANGFUSE_PUBLIC_KEY,
-        #     host=config.LANGFUSE_HOST
-        # )
-        
-        # Hardcoded prompts temporarily replacing Langfuse
+        # Prompt for query refinement
         self.refiner_prompt_template = """Given the following conversation history and a new question, reformulate the question to be more specific and standalone, incorporating relevant context from the conversation history.
 
 Conversation history:
@@ -36,54 +27,7 @@ New question: {question}
 
 Reformulated question:"""
         
-        self.qa_prompt_template = """You are a helpful assistant that answers questions based on the provided context. Use the context below to answer the user's question. If the context doesn't contain enough information to answer the question, say so clearly.
-
-Context:
-{chunks}
-
-Question: {question}
-
-Answer:"""
-        
         logger.info("LLM service initialized successfully")
-    
-    def call_stream(self, messages: list, context: str) -> Generator[str, None, None]:
-        """
-        Generate streaming response from the language model.
-        
-        Args:
-            messages: List of conversation messages
-            context: Retrieved context for answering questions
-            
-        Yields:
-            str: Streaming response chunks
-        """
-        user_question = messages[-1]['content'] if messages else ""
-        
-        # Compile the prompt with context and question
-        prompt = self.qa_prompt_template.format(chunks=context, question=user_question)
-        
-        conversation_messages = [
-            {"role": "system", "content": prompt}
-        ]
-        conversation_messages.extend(messages)
-        
-        try:
-            stream = self.client.chat.completions.create(
-                model=config.CHAT_MODEL,
-                messages=conversation_messages,
-                stream=True,
-                temperature=config.CHAT_TEMPERATURE,
-                max_tokens=config.CHAT_MAX_TOKENS
-            )
-            
-            for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
-                    yield chunk.choices[0].delta.content
-                    
-        except Exception as e:
-            logger.error(f"OpenAI API call failed: {e}")
-            yield "Error: Unable to process your request. Please try again."
     
     def refine_query(self, messages_str: str, question: str) -> str:
         """

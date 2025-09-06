@@ -1,6 +1,7 @@
 """Vector store service for similarity search and document retrieval."""
 
 import logging
+import time
 from typing import List
 from qdrant_client import QdrantClient
 from langchain_openai import OpenAIEmbeddings
@@ -52,13 +53,16 @@ class VectorService:
             k = config.SIMILARITY_SEARCH_K
             
         try:
+            start_time = time.time()
+            logger.info(f"service=vector_store op=similarity_search status=start k={k} query_preview='{query[:100]}'")
             results = self.vector_store.similarity_search(query, k=k)
             documents = [doc.page_content for doc in results]
-            logger.info(f"Retrieved {len(documents)} documents for query: {query[:100]}...")
+            elapsed = time.time() - start_time
+            logger.info(f"service=vector_store op=similarity_search status=success docs={len(documents)} elapsed_sec={elapsed:.4f}")
             return documents
             
         except Exception as e:
-            logger.error(f"Similarity search failed: {e}")
+            logger.exception(f"service=vector_store op=similarity_search status=error message='{str(e)}'")
             return []
     
     def rerank_documents(self, query: str, documents: List[str], top_n: int = None) -> List[str]:
@@ -80,6 +84,8 @@ class VectorService:
             top_n = config.RERANK_TOP_N
         
         try:
+            start_time = time.time()
+            logger.info(f"service=vector_store op=rerank status=start top_n={top_n} query_preview='{query[:100]}' input_docs={len(documents)}")
             results = self.cohere_client.rerank(
                 model=config.RERANK_MODEL,
                 query=query,
@@ -89,15 +95,12 @@ class VectorService:
             
             # Extract reranked documents in order of relevance
             reranked_docs = [documents[result.index] for result in results.results]
-            logger.info(f"Reranked {len(documents)} documents, returning top {len(reranked_docs)}")
+            elapsed = time.time() - start_time
+            logger.info(f"service=vector_store op=rerank status=success input_docs={len(documents)} output_docs={len(reranked_docs)} elapsed_sec={elapsed:.4f}")
             return reranked_docs
             
         except Exception as e:
-            logger.error(f"Document reranking failed: {e}")
+            logger.exception(f"service=vector_store op=rerank status=error message='{str(e)}'")
             return documents[:top_n]  # Fallback to original order
     
-    def search_and_rerank(self, query: str, k: int = None, top_n: int = None) -> str:
-        """Perform similarity search followed by reranking and return joined text."""
-        documents = self.similarity_search(query, k)
-        reranked_docs = self.rerank_documents(query, documents, top_n)
-        return "\n--------------------------------------------------\n".join(reranked_docs)
+    # Removed unused helper method search_and_rerank

@@ -1,9 +1,10 @@
 # FastAPI RAG Chatbot
 
-A production-ready FastAPI application that implements a Retrieval-Augmented Generation (RAG) chatbot using vector search, document reranking, and streaming LLM responses.
+A production-ready FastAPI application that implements an agent-based Retrieval-Augmented Generation (RAG) chatbot using OpenAI Agents framework, vector search, document reranking, and streaming LLM responses.
 
 ## Features
 
+- **Agent-Based Architecture**: Uses OpenAI Agents framework with tool calling for intelligent query processing
 - **Real-time Chat**: WebSocket-based chat interface with streaming responses
 - **RAG Architecture**: Combines vector search with language models for accurate, context-aware responses
 - **Vector Search**: Uses Qdrant vector database with OpenAI embeddings for document similarity search
@@ -16,19 +17,21 @@ A production-ready FastAPI application that implements a Retrieval-Augmented Gen
 ### Core Components
 
 - **FastAPI App** (`main.py`): HTTP server and WebSocket endpoints
-- **Chat Service** (`chat_service.py`): Orchestrates the conversation flow
-- **LLM Service** (`llm_service.py`): Handles language model interactions
+- **Agent Service** (`agent_service.py`): Orchestrates conversations using OpenAI Agents framework
+- **Agent Tools** (`agent_tools.py`): Function tools for vector search, query refinement, and document reranking
+- **LLM Service** (`llm_service.py`): Handles language model interactions for query refinement
 - **Vector Service** (`vector_service.py`): Manages vector search and document reranking
 - **Configuration** (`config.py`): Centralized configuration management
 
-### Chat Flow
+### Agent-Based Chat Flow
 
 1. **User Input**: Received via WebSocket connection
-2. **Query Refinement**: Uses conversation history to refine the query (for multi-turn conversations)
-3. **Vector Search**: Retrieves relevant documents from Qdrant vector store
-4. **Document Reranking**: Reorders documents by relevance using Cohere
-5. **Response Generation**: Streams LLM response with retrieved context
-6. **History Management**: Maintains conversation history for context
+2. **Agent Processing**: OpenAI Agent processes the query using available tools:
+   - **Query Refinement**: Uses conversation history to refine queries for multi-turn conversations
+   - **Vector Search**: Retrieves relevant documents from Qdrant vector store
+   - **Document Reranking**: Reorders documents by relevance using Cohere
+3. **Response Generation**: Agent streams response with retrieved and reranked context
+4. **History Management**: Maintains conversation history for context-aware responses
 
 ## Installation
 
@@ -54,8 +57,10 @@ A production-ready FastAPI application that implements a Retrieval-Augmented Gen
 Create a `.env` file with the following variables:
 
 ```env
-# OpenAI Configuration
+# OpenAI Configuration (for embeddings)
 OPENAI_API_KEY=your_openai_api_key
+
+# OpenRouter Configuration (for chat models)
 OPENROUTER_KEY=your_openrouter_api_key
 
 # Qdrant Vector Database
@@ -65,7 +70,7 @@ QDRANT_API_KEY=your_qdrant_api_key
 # Cohere Reranking
 COHERE_API_KEY=your_cohere_api_key
 
-# Langfuse (LLM Observability)
+# Langfuse (LLM Observability - Optional)
 LANGFUSE_SECRET_KEY=your_langfuse_secret_key
 LANGFUSE_PUBLIC_KEY=your_langfuse_public_key
 ```
@@ -108,10 +113,21 @@ docker run -p 8000:8000 --env-file .env fastapi-chatbot
 
 The application uses a centralized configuration system in `app/config.py`. Key configuration options:
 
-- **Model Settings**: LLM model selection, temperature, max tokens
-- **Vector Search**: Similarity search parameters, collection name
-- **Reranking**: Top-N documents to rerank
-- **API Endpoints**: Various service URLs and keys
+- **Model Settings**:
+  - `CHAT_MODEL`: Chat model (default: "google/gemini-2.0-flash-001" via OpenRouter)
+  - `EMBEDDING_MODEL`: Embedding model (default: "text-embedding-3-small")
+  - `CHAT_TEMPERATURE`: Response temperature (default: 0.1)
+  - `REFINER_MAX_TOKENS`: Max tokens for query refinement (default: 200)
+
+- **Vector Search**:
+  - `SIMILARITY_SEARCH_K`: Number of documents to retrieve (default: 10)
+  - `QDRANT_COLLECTION_NAME`: Vector collection name (default: "uncitral")
+
+- **Reranking**:
+  - `RERANK_MODEL`: Cohere rerank model (default: "rerank-v3.5")
+  - `RERANK_TOP_N`: Top-N documents to return after reranking (default: 6)
+
+- **API Endpoints**: OpenAI, OpenRouter, Qdrant, and Cohere API configurations
 
 ## Project Structure
 
@@ -121,15 +137,18 @@ fastapi-chatbot/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI application and routes
 │   ├── config.py            # Configuration management
-│   ├── chat_service.py      # Chat orchestration logic
+│   ├── agent_service.py     # Agent orchestration using OpenAI Agents
+│   ├── agent_tools.py       # Function tools for RAG operations
 │   ├── llm_service.py       # Language model interactions
-│   ├── vector_service.py    # Vector search and reranking
-│   └── utils.py             # Utility functions
+│   └── vector_service.py    # Vector search and reranking
 ├── templates/
 │   └── chatting.html        # Chat interface template
 ├── static/
 │   ├── chatting.css         # Chat interface styles
 │   └── chatting.js          # Chat interface JavaScript
+├── prep/
+│   └── data/
+│       └── extract_pdf_unictral.ipynb  # Data preparation notebook
 ├── requirements.txt         # Python dependencies
 ├── Dockerfile               # Docker container configuration
 ├── docker-compose.yml       # Docker Compose configuration
@@ -140,13 +159,15 @@ fastapi-chatbot/
 ## Dependencies
 
 - **FastAPI**: Web framework for building APIs
-- **LangChain**: Framework for LLM applications
+- **OpenAI Agents**: Framework for building AI agents with tool calling
+- **LangChain**: Framework for LLM applications and vector stores
 - **Qdrant**: Vector database for similarity search
-- **OpenAI**: Embeddings and language models
-- **Cohere**: Document reranking
+- **OpenAI**: Embeddings and language models via OpenRouter
+- **Cohere**: Document reranking API
 - **Langfuse**: LLM observability and prompt management
 - **WebSockets**: Real-time communication
 - **Jinja2**: HTML templating
+- **Python-dotenv**: Environment variable management
 
 ## Development
 

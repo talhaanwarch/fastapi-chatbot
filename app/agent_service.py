@@ -61,7 +61,7 @@ Always be helpful, accurate, and cite the information you find in the documents 
             str: Complete response text for storing in chat history
         """
         total_start = time.time()
-        logger.info(f"Processing user message with agent: {user_input}")
+        logger.info(f"service=agent op=process_message status=start user_input_preview='{user_input[:120]}' history_turns={len(chat_history)}")
         
         # Add user message to history
         chat_history.append({"user": user_input})
@@ -88,20 +88,20 @@ Always be helpful, accurate, and cite the information you find in the documents 
             await websocket.send_text('[END]')
             
         except Exception as e:
-            logger.error(f"Agent processing failed: {e}")
+            logger.exception(f"service=agent op=process_message status=error message='{str(e)}'")
             error_msg = "An error occurred while generating the response. Please try again."
             await websocket.send_text(error_msg)
             await websocket.send_text('[END]')
             response_text = error_msg
         
         end_time = time.time()
-        logger.info(f"Agent response generation completed in {end_time - start_time:.4f} seconds")
+        logger.info(f"service=agent op=process_message status=generated elapsed_sec={end_time - start_time:.4f}")
         
         # Add assistant response to history
         chat_history.append({"assistant": response_text})
         
         total_end = time.time()
-        logger.info(f"Total agent message processing time: {total_end - total_start:.4f} seconds")
+        logger.info(f"service=agent op=process_message status=complete total_elapsed_sec={total_end - total_start:.4f}")
         
         return response_text
     
@@ -156,7 +156,7 @@ Always be helpful, accurate, and cite the information you find in the documents 
                         yield chunk
                         
         except Exception as e:
-            logger.error(f"Error during agent response streaming: {e}")
+            logger.exception(f"service=agent op=stream_response status=error message='{str(e)}'")
             error_msg = "An error occurred while generating the response. Please try again."
             await websocket.send_text(error_msg)
             yield error_msg

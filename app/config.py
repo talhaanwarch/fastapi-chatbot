@@ -32,7 +32,6 @@ class Config:
     
     # API Configuration
     CHAT_TEMPERATURE: float = 0.1
-    CHAT_MAX_TOKENS: int = 2000
     REFINER_MAX_TOKENS: int = 200
     
     # Vector Search Configuration

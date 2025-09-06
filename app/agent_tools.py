@@ -1,6 +1,7 @@
 """Agent tools for RAG operations using OpenAI Agents framework."""
 
 import logging
+import time
 from typing import Optional
 from agents import function_tool
 
@@ -41,14 +42,16 @@ def vector_search(query: str) -> str:
         str: Retrieved documents separated by delimiters (without reranking)
     """
     try:
-        logger.info(f"Performing vector search for query: {query[:100]}...")
+        start_time = time.time()
+        logger.info(f"tool=vector_search status=start query_preview='{query[:100]}'")
         vector_service = get_vector_service()
         documents = vector_service.similarity_search(query)
         result = "\n--------------------------------------------------\n".join(documents)
-        logger.info(f"Vector search completed, returned {len(documents)} documents")
+        elapsed = time.time() - start_time
+        logger.info(f"tool=vector_search status=success docs={len(documents)} elapsed_sec={elapsed:.4f}")
         return result
     except Exception as e:
-        logger.error(f"Vector search failed: {e}")
+        logger.exception(f"tool=vector_search status=error message='{str(e)}'")
         return "No relevant documents found due to search error."
 
 
@@ -65,13 +68,15 @@ def refine_query(conversation: str, question: str) -> str:
         str: Refined query that better captures user intent
     """
     try:
-        logger.info(f"Refining query: {question[:100]}...")
+        start_time = time.time()
+        logger.info(f"tool=refine_query status=start question_preview='{question[:100]}' conv_chars={len(conversation)}")
         llm_service = get_llm_service()
         refined = llm_service.refine_query(conversation, question)
-        logger.info(f"Query refined from '{question}' to '{refined}'")
+        elapsed = time.time() - start_time
+        logger.info(f"tool=refine_query status=success original_preview='{question[:80]}' refined_preview='{refined[:80]}' elapsed_sec={elapsed:.4f}")
         return refined
     except Exception as e:
-        logger.error(f"Query refinement failed: {e}")
+        logger.exception(f"tool=refine_query status=error message='{str(e)}'")
         return question
 
 
@@ -88,7 +93,8 @@ def rerank_documents(query: str, documents_str: str) -> str:
         str: Reranked documents in order of relevance
     """
     try:
-        logger.info(f"Reranking documents for query: {query[:100]}...")
+        start_time = time.time()
+        logger.info(f"tool=rerank_documents status=start query_preview='{query[:100]}'")
         
         # Split documents by delimiter
         documents = documents_str.split("\n--------------------------------------------------\n")
@@ -105,9 +111,10 @@ def rerank_documents(query: str, documents_str: str) -> str:
         
         # Join back with delimiter
         result = "\n--------------------------------------------------\n".join(reranked)
-        logger.info(f"Document reranking completed, processed {len(documents)} documents")
+        elapsed = time.time() - start_time
+        logger.info(f"tool=rerank_documents status=success input_docs={len(documents)} output_docs={len(reranked)} elapsed_sec={elapsed:.4f}")
         return result
         
     except Exception as e:
-        logger.error(f"Document reranking failed: {e}")
+        logger.exception(f"tool=rerank_documents status=error message='{str(e)}'")
         return documents_str  # Return original if reranking fails

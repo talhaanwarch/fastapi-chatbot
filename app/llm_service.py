@@ -1,6 +1,7 @@
 """Language model service for handling LLM interactions."""
 
 import logging
+import time
 from openai import OpenAI
 from .config import config
 
@@ -43,6 +44,8 @@ Reformulated question:"""
         prompt = self.refiner_prompt_template.format(conversation=messages_str, question=question)
         
         try:
+            start_time = time.time()
+            logger.info(f"service=llm op=refine_query status=start question_preview='{question[:100]}' conv_chars={len(messages_str)}")
             response = self.client.chat.completions.create(
                 model=config.CHAT_MODEL,
                 messages=[
@@ -53,9 +56,10 @@ Reformulated question:"""
             )
             
             refined_query = response.choices[0].message.content.strip()
-            logger.info(f"Query refined from '{question}' to '{refined_query}'")
+            elapsed = time.time() - start_time
+            logger.info(f"service=llm op=refine_query status=success original_preview='{question[:80]}' refined_preview='{refined_query[:80]}' elapsed_sec={elapsed:.4f}")
             return refined_query
             
         except Exception as e:
-            logger.error(f"Query refinement failed: {e}")
+            logger.exception(f"service=llm op=refine_query status=error message='{str(e)}'")
             return question

@@ -3,7 +3,7 @@
 import logging
 from typing import Generator, Optional
 from openai import OpenAI
-from langfuse import Langfuse
+# from langfuse import Langfuse  # Temporarily disabled for Agent refactor
 from .config import config
 
 logger = logging.getLogger(__name__)
@@ -19,15 +19,31 @@ class LLMService:
             api_key=config.OPENROUTER_KEY,
         )
         
-        self.langfuse = Langfuse(
-            secret_key=config.LANGFUSE_SECRET_KEY,
-            public_key=config.LANGFUSE_PUBLIC_KEY,
-            host=config.LANGFUSE_HOST
-        )
+        # Temporarily disabled Langfuse for Agent refactor
+        # self.langfuse = Langfuse(
+        #     secret_key=config.LANGFUSE_SECRET_KEY,
+        #     public_key=config.LANGFUSE_PUBLIC_KEY,
+        #     host=config.LANGFUSE_HOST
+        # )
         
-        # Load prompts from Langfuse
-        self.refiner_prompt = self.langfuse.get_prompt("refiner_prompt")
-        self.qa_prompt = self.langfuse.get_prompt("qa_prompt")
+        # Hardcoded prompts temporarily replacing Langfuse
+        self.refiner_prompt_template = """Given the following conversation history and a new question, reformulate the question to be more specific and standalone, incorporating relevant context from the conversation history.
+
+Conversation history:
+{conversation}
+
+New question: {question}
+
+Reformulated question:"""
+        
+        self.qa_prompt_template = """You are a helpful assistant that answers questions based on the provided context. Use the context below to answer the user's question. If the context doesn't contain enough information to answer the question, say so clearly.
+
+Context:
+{chunks}
+
+Question: {question}
+
+Answer:"""
         
         logger.info("LLM service initialized successfully")
     
@@ -45,7 +61,7 @@ class LLMService:
         user_question = messages[-1]['content'] if messages else ""
         
         # Compile the prompt with context and question
-        prompt = self.qa_prompt.compile(chunks=context, question=user_question)
+        prompt = self.qa_prompt_template.format(chunks=context, question=user_question)
         
         conversation_messages = [
             {"role": "system", "content": prompt}
@@ -80,7 +96,7 @@ class LLMService:
         Returns:
             str: Refined query or original question if refinement fails
         """
-        prompt = self.refiner_prompt.compile(conversation=messages_str, question=question)
+        prompt = self.refiner_prompt_template.format(conversation=messages_str, question=question)
         
         try:
             response = self.client.chat.completions.create(

@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from .config import config
-from .chat_service import ChatService
+from .agent_service import AgentService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,8 +33,8 @@ logger.info(f"Static directory: {static_dir}")
 templates = Jinja2Templates(directory=templates_dir)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-# Initialize chat service
-chat_service = ChatService()
+# Initialize agent service
+agent_service = AgentService()
 
 @app.get("/", response_class=HTMLResponse)
 async def get_homepage(request: Request) -> HTMLResponse:
@@ -55,11 +55,11 @@ async def websocket_chat(websocket: WebSocket) -> None:
     """
     Handle WebSocket connections for real-time chat.
     
-    The chat flow includes:
+    The chat flow uses OpenAI Agents framework with tools:
     1. Query refinement based on conversation history
     2. Vector similarity search for relevant context
     3. Document reranking for better relevance
-    4. Streaming LLM response generation
+    4. Streaming agent response generation
     
     Args:
         websocket: WebSocket connection instance
@@ -73,8 +73,8 @@ async def websocket_chat(websocket: WebSocket) -> None:
             user_input = await websocket.receive_text()
             logger.info(f"Received user message: {user_input}")
             
-            # Process message and stream response
-            await chat_service.process_message(user_input, chat_history, websocket)
+            # Process message and stream response using agent
+            await agent_service.process_message(user_input, chat_history, websocket)
             
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")

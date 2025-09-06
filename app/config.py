@@ -3,6 +3,8 @@
 import os
 from typing import Optional
 from dotenv import load_dotenv
+from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+from openai import AsyncOpenAI
 
 # Load environment variables
 load_dotenv()
@@ -23,10 +25,10 @@ class Config:
     # Cohere Configuration
     COHERE_API_KEY: Optional[str] = os.getenv("COHERE_API_KEY")
     
-    # Langfuse Configuration
-    LANGFUSE_SECRET_KEY: Optional[str] = os.getenv("LANGFUSE_SECRET_KEY")
-    LANGFUSE_PUBLIC_KEY: Optional[str] = os.getenv("LANGFUSE_PUBLIC_KEY")
-    LANGFUSE_HOST: str = "https://us.cloud.langfuse.com"
+    # Langfuse Configuration (temporarily disabled for Agent refactor)
+    # LANGFUSE_SECRET_KEY: Optional[str] = os.getenv("LANGFUSE_SECRET_KEY")
+    # LANGFUSE_PUBLIC_KEY: Optional[str] = os.getenv("LANGFUSE_PUBLIC_KEY")
+    # LANGFUSE_HOST: str = "https://us.cloud.langfuse.com"
     
     # Model Configuration
     EMBEDDING_MODEL: str = "text-embedding-3-small"
@@ -43,12 +45,30 @@ class Config:
     RERANK_TOP_N: int = 6
     
     @classmethod
+    def get_chat_model(cls) -> OpenAIChatCompletionsModel:
+        """
+        Create and return a configured chat model object.
+        
+        Returns:
+            OpenAIChatCompletionsModel: Configured model for chat operations
+        """
+        # Create OpenAI client with OpenRouter configuration
+        openai_client = AsyncOpenAI(
+            api_key=cls.OPENROUTER_KEY,
+            base_url="https://openrouter.ai/api/v1"
+        )
+        
+        return OpenAIChatCompletionsModel(
+            model=cls.CHAT_MODEL,
+            openai_client=openai_client
+        )
+    
+    @classmethod
     def validate(cls) -> None:
         """Validate that required configuration is present."""
         required_keys = [
             "OPENAI_API_KEY", "OPENROUTER_KEY", "QDRANT_URL", 
-            "QDRANT_API_KEY", "COHERE_API_KEY", "LANGFUSE_SECRET_KEY", 
-            "LANGFUSE_PUBLIC_KEY"
+            "QDRANT_API_KEY", "COHERE_API_KEY"
         ]
         
         missing_keys = []
